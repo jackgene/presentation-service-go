@@ -27,18 +27,16 @@ func closeListener(conn *websocket.Conn) <-chan struct{} {
 	closed := make(chan struct{})
 	go func() {
 		for {
-			messageType, p, readErr := conn.ReadMessage()
+			_, _, readErr := conn.ReadMessage()
 			if readErr != nil {
 				if _, ok := readErr.(*websocket.CloseError); ok {
-					log.Printf("websocket connection closed by client %v", readErr)
+					log.Printf("connection closed by client: %v", readErr)
 					_ = conn.Close()
 					closed <- struct{}{}
 					close(closed)
 					break
 				}
 				log.Printf("unexpected websocket error: %v", readErr)
-			} else {
-				log.Printf("unexpected non-error message (type: %d) - %v", messageType, p)
 			}
 		}
 	}()
