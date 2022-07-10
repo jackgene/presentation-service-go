@@ -27,14 +27,18 @@ func closeListener(conn *websocket.Conn) <-chan struct{} {
 	closed := make(chan struct{})
 	go func() {
 		for {
-			_, _, readErr := conn.ReadMessage()
+			messageType, p, readErr := conn.ReadMessage()
 			if readErr != nil {
 				if _, ok := readErr.(*websocket.CloseError); ok {
 					log.Printf("websocket connection closed by client %v", readErr)
+					_ = conn.Close()
 					closed <- struct{}{}
 					close(closed)
 					break
 				}
+				log.Printf("unexpected websocket error: %v", readErr)
+			} else {
+				log.Printf("unexpected non-error message (type: %d) - %v", messageType, p)
 			}
 		}
 	}()
@@ -64,32 +68,6 @@ func main() {
 		c.HTML(http.StatusOK, "deck.html", nil)
 	})
 
-	r.GET("/event/transcription", func(c *gin.Context) {
-		conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			log.Printf("failed to upgrade websocket request %v", err)
-			return
-		}
-		closed := closeListener(conn)
-
-		transcripts := make(chan transcription.Transcript)
-		transcriptionActor.Register(transcripts)
-		defer transcriptionActor.Unregister(transcripts)
-	poll:
-		for {
-			select {
-			case msg := <-transcripts:
-				writeErr := conn.WriteJSON(msg)
-				if writeErr != nil {
-					log.Printf("error sending transcription (%v)", writeErr)
-					break poll
-				}
-			case <-closed:
-				break poll
-			}
-		}
-	})
-
 	r.GET("/event/question", func(c *gin.Context) {
 		conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -108,6 +86,32 @@ func main() {
 				writeErr := conn.WriteJSON(msg)
 				if writeErr != nil {
 					log.Printf("error sending questions (%v)", writeErr)
+					break poll
+				}
+			case <-closed:
+				break poll
+			}
+		}
+	})
+
+	r.GET("/event/transcription", func(c *gin.Context) {
+		conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("failed to upgrade websocket request %v", err)
+			return
+		}
+		closed := closeListener(conn)
+
+		transcripts := make(chan transcription.Transcript)
+		transcriptionActor.Register(transcripts)
+		defer transcriptionActor.Unregister(transcripts)
+	poll:
+		for {
+			select {
+			case msg := <-transcripts:
+				writeErr := conn.WriteJSON(msg)
+				if writeErr != nil {
+					log.Printf("error sending transcription (%v)", writeErr)
 					break poll
 				}
 			case <-closed:
