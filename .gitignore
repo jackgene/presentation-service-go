@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+scripts
+
+# Go
+dist
+coverage.html
+coverage.out
