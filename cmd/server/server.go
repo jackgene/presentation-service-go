@@ -23,7 +23,7 @@ var validRecipients = map[string]struct{}{
 //go:embed public/html
 var fs embed.FS
 
-func closeListener(conn *websocket.Conn) <-chan struct{} {
+func clientCloseListener(conn *websocket.Conn) <-chan struct{} {
 	closed := make(chan struct{})
 	go func() {
 		for {
@@ -31,7 +31,6 @@ func closeListener(conn *websocket.Conn) <-chan struct{} {
 			if readErr != nil {
 				if _, ok := readErr.(*websocket.CloseError); ok {
 					log.Printf("connection closed by client: %v", readErr)
-					_ = conn.Close()
 					closed <- struct{}{}
 					close(closed)
 					break
@@ -45,6 +44,7 @@ func closeListener(conn *websocket.Conn) <-chan struct{} {
 }
 
 func main() {
+	log.SetPrefix("[service] ")
 	wsupgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -72,7 +72,8 @@ func main() {
 			log.Printf("failed to upgrade websocket request %v", err)
 			return
 		}
-		closed := closeListener(conn)
+		defer func() { _ = conn.Close() }()
+		clientClosed := clientCloseListener(conn)
 
 		msgs := make(chan approval.Messages)
 		questionActor.Register(msgs)
@@ -86,7 +87,7 @@ func main() {
 					log.Printf("error sending questions (%v)", writeErr)
 					break poll
 				}
-			case <-closed:
+			case <-clientClosed:
 				break poll
 			}
 		}
@@ -98,7 +99,8 @@ func main() {
 			log.Printf("failed to upgrade websocket request %v", err)
 			return
 		}
-		closed := closeListener(conn)
+		defer func() { _ = conn.Close() }()
+		clientClosed := clientCloseListener(conn)
 
 		transcripts := make(chan transcription.Transcript)
 		transcriptionActor.Register(transcripts)
@@ -112,7 +114,7 @@ func main() {
 					log.Printf("error sending transcription (%v)", writeErr)
 					break poll
 				}
-			case <-closed:
+			case <-clientClosed:
 				break poll
 			}
 		}
@@ -129,7 +131,8 @@ func main() {
 			log.Printf("failed to upgrade websocket request %v", err)
 			return
 		}
-		closed := closeListener(conn)
+		defer func() { _ = conn.Close() }()
+		clientClosed := clientCloseListener(conn)
 
 		msgs := make(chan chat.Message)
 		rejectedMessageActor.Register(msgs)
@@ -143,7 +146,7 @@ func main() {
 					log.Printf("error sending moderation chats (%v)", writeErr)
 					break poll
 				}
-			case <-closed:
+			case <-clientClosed:
 				break poll
 			}
 		}
