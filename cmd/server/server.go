@@ -24,7 +24,7 @@ type cliParams struct {
 func parseFlags() cliParams {
 	params := cliParams{}
 
-	flag.StringVar(&params.htmlPath, "htmlPath", "", "Presentation HTML file path")
+	flag.StringVar(&params.htmlPath, "html-path", "", "Presentation HTML file path")
 	flag.UintVar(&params.port, "port", 8973, "HTTP server port")
 	flag.Parse()
 
