@@ -1,8 +1,8 @@
 package approval
 
 import (
-	"emr-bootstrap-secrets/internal/chat"
 	"log"
+	"presentation-service/internal/chat"
 )
 
 type approvedMessages struct {

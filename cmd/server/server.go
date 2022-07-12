@@ -2,16 +2,40 @@ package main
 
 import (
 	"embed"
-	"emr-bootstrap-secrets/internal/chat"
-	"emr-bootstrap-secrets/internal/chat/approval"
-	"emr-bootstrap-secrets/internal/transcription"
+	"flag"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"presentation-service/internal/chat"
+	"presentation-service/internal/chat/approval"
+	"presentation-service/internal/transcription"
 	"strings"
 )
+
+type cliParams struct {
+	htmlPath string
+	port     uint
+}
+
+func parseFlags() cliParams {
+	params := cliParams{}
+
+	flag.StringVar(&params.htmlPath, "htmlPath", "", "Presentation HTML file path")
+	flag.UintVar(&params.port, "port", 8973, "HTTP server port")
+	flag.Parse()
+
+	// Required args
+	if params.htmlPath == "" {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	return params
+}
 
 const routeSeperator = " to "
 
@@ -44,6 +68,8 @@ func clientCloseListener(conn *websocket.Conn) <-chan struct{} {
 }
 
 func main() {
+	params := parseFlags()
+
 	log.SetPrefix("[service] ")
 	wsupgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -63,7 +89,7 @@ func main() {
 
 	// Deck
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "deck.html", nil)
+		c.File(params.htmlPath)
 	})
 
 	r.GET("/event/question", func(c *gin.Context) {
@@ -194,5 +220,5 @@ func main() {
 	})
 
 	_ = r.SetTrustedProxies(nil)
-	_ = r.Run("0.0.0.0:8973")
+	_ = r.Run(fmt.Sprintf("0.0.0.0:%d", params.port))
 }

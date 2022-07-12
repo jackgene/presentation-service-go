@@ -1,6 +1,6 @@
 package approval
 
-import "emr-bootstrap-secrets/internal/chat"
+import "presentation-service/internal/chat"
 
 type Actor interface {
 	OnNewMessage(message chat.Message)
