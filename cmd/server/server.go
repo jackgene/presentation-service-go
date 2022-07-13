@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"presentation-service/internal/chat"
@@ -18,21 +19,23 @@ import (
 
 type cliParams struct {
 	htmlPath string
-	port     uint
+	port     uint16
 }
 
 func parseFlags() cliParams {
 	params := cliParams{}
+	var port uint
 
 	flag.StringVar(&params.htmlPath, "html-path", "", "Presentation HTML file path")
-	flag.UintVar(&params.port, "port", 8973, "HTTP server port")
+	flag.UintVar(&port, "port", 8973, "HTTP server port")
 	flag.Parse()
 
 	// Required args
-	if params.htmlPath == "" {
+	if port > math.MaxUint16 || params.htmlPath == "" {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+	params.port = uint16(port)
 
 	return params
 }
