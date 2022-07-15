@@ -27,7 +27,7 @@ func (t *transcription) Unregister(listener chan<- Transcript) {
 	log.Printf("unregistered transcription listener (count: %v)", len(t.listeners))
 }
 
-func newTranscription() transcription {
+func newBroadcaster() transcription {
 	return transcription{
 		text:      "",
 		listeners: map[chan<- Transcript]struct{}{},

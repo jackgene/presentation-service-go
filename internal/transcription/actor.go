@@ -48,9 +48,9 @@ func (a *transcriptionActor) Unregister(listener chan<- Transcript) {
 	a.mailbox <- &unregisterReq{listener: listener}
 }
 
-func NewTranscriptionActor() Actor {
+func NewBroadcasterActor() Actor {
 	actor := &transcriptionActor{
-		state:   newTranscription(),
+		state:   newBroadcaster(),
 		mailbox: make(chan interface{}, 16),
 	}
 	go actor.run()
