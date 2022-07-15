@@ -3,7 +3,7 @@ package approval
 import "presentation-service/internal/chat"
 
 type Actor interface {
-	OnNewMessage(message chat.Message)
+	NewMessage(message chat.Message)
 	Register(chan<- Messages)
 	Unregister(chan<- Messages)
 	Reset()
@@ -32,7 +32,7 @@ func (a *approvedMessagesActor) run() {
 	for reqUntyped := range a.mailbox {
 		switch req := reqUntyped.(type) {
 		case *onNewMessageReq:
-			a.state.OnNewMessage(req.message)
+			a.state.NewMessage(req.message)
 		case *registerReq:
 			a.state.Register(req.listener)
 		case *unregisterReq:
@@ -43,7 +43,7 @@ func (a *approvedMessagesActor) run() {
 	}
 }
 
-func (a *approvedMessagesActor) OnNewMessage(message chat.Message) {
+func (a *approvedMessagesActor) NewMessage(message chat.Message) {
 	a.mailbox <- &onNewMessageReq{message: message}
 }
 
@@ -59,9 +59,9 @@ func (a *approvedMessagesActor) Reset() {
 	a.mailbox <- &resetReq{}
 }
 
-func NewApprovedMessagesActor(chatMessages, rejectedMessages chat.Actor, initialCapacity int) Actor {
+func NewMessageRouter(chatMessages, rejectedMessages chat.Actor, initialCapacity int) Actor {
 	actor := &approvedMessagesActor{
-		state:   newApprovedMessages(chatMessages, rejectedMessages, initialCapacity),
+		state:   newMessageRouter(chatMessages, rejectedMessages, initialCapacity),
 		mailbox: make(chan interface{}, 16),
 	}
 	go actor.run()

@@ -30,8 +30,7 @@ func (m *approvedMessages) notifyAllListener() {
 	}
 }
 
-// OnNewMessage To comply to chat.Listener
-func (m *approvedMessages) OnNewMessage(message chat.Message) {
+func (m *approvedMessages) NewMessage(message chat.Message) {
 	if message.Sender != "Me" {
 		m.rejectedMessagesActor.NewMessage(message)
 		return
@@ -48,7 +47,7 @@ func (m *approvedMessages) Register(listener chan<- Messages) {
 		m.chatMessagesActor.Register(m.messages)
 		go func() {
 			for msg := range m.messages {
-				m.OnNewMessage(msg)
+				m.NewMessage(msg)
 			}
 		}()
 	}
@@ -71,7 +70,7 @@ func (m *approvedMessages) Reset() {
 	m.notifyAllListener()
 }
 
-func newApprovedMessages(chatMessages, rejectedMessages chat.Actor, initialCapacity int) approvedMessages {
+func newMessageRouter(chatMessages, rejectedMessages chat.Actor, initialCapacity int) approvedMessages {
 	return approvedMessages{
 		chatText:              make([]string, 0, initialCapacity),
 		chatMessagesActor:     chatMessages,
