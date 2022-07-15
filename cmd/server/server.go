@@ -87,8 +87,8 @@ func main() {
 	// Actors
 	chatMessageActor := chat.NewBroadcasterActor("chat")
 	rejectedMessageActor := chat.NewBroadcasterActor("rejected")
-	transcriptionActor := transcription.NewTranscriptionActor()
 	questionActor := approval.NewApprovedMessagesActor(chatMessageActor, rejectedMessageActor, 10)
+	transcriptionActor := transcription.NewTranscriptionActor()
 
 	// Deck
 	r.GET("/", func(c *gin.Context) {
