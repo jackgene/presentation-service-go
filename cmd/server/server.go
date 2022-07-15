@@ -213,8 +213,8 @@ func main() {
 	})
 
 	// Transcription
-	r.GET("/transcriber", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "transcriber.html", nil)
+	r.GET("/transcription", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "transcription.html", nil)
 	})
 
 	r.POST("/transcription", func(c *gin.Context) {
