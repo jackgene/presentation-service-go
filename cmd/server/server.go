@@ -13,6 +13,8 @@ import (
 	"os"
 	"presentation-service/internal/chat"
 	"presentation-service/internal/chat/approval"
+	"presentation-service/internal/chat/counter"
+	"presentation-service/internal/token"
 	"presentation-service/internal/transcription"
 	"strings"
 )
@@ -87,12 +89,47 @@ func main() {
 	// Actors
 	chatMessageActor := chat.NewBroadcasterActor("chat")
 	rejectedMessageActor := chat.NewBroadcasterActor("rejected")
+	languagePollActor := counter.NewSendersByTokenActor(
+		token.LanguageFromFirstWord,
+		chatMessageActor, rejectedMessageActor, 200,
+	)
 	questionActor := approval.NewMessageRouter(chatMessageActor, rejectedMessageActor, 10)
 	transcriptionActor := transcription.NewBroadcasterActor()
 
 	// Deck
 	r.GET("/", func(c *gin.Context) {
 		c.File(params.htmlPath)
+	})
+
+	r.GET("/event/language-poll", func(c *gin.Context) {
+		conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("failed to upgrade websocket request %v", err)
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		clientClosed := clientCloseListener(conn)
+
+		counts := make(chan counter.Counts)
+		languagePollActor.Register(counts)
+		defer languagePollActor.Unregister(counts)
+	poll:
+		for {
+			select {
+			case count := <-counts:
+				flattenedCount := make([][]interface{}, 0, len(count.ItemsByCount))
+				for count, items := range count.ItemsByCount {
+					flattenedCount = append(flattenedCount, []interface{}{count, items})
+				}
+				writeErr := conn.WriteJSON(flattenedCount)
+				if writeErr != nil {
+					log.Printf("error sending poll response (%v)", writeErr)
+					break poll
+				}
+			case <-clientClosed:
+				break poll
+			}
+		}
 	})
 
 	r.GET("/event/question", func(c *gin.Context) {
@@ -208,6 +245,7 @@ func main() {
 	})
 
 	r.GET("/reset", func(c *gin.Context) {
+		languagePollActor.Reset()
 		questionActor.Reset()
 		c.Status(http.StatusNoContent)
 	})
