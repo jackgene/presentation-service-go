@@ -7,21 +7,20 @@ type broadcaster struct {
 	listeners map[chan<- Message]struct{}
 }
 
-func (t *broadcaster) NewMessage(message Message) {
-	for listener := range t.listeners {
+func (b *broadcaster) NewMessage(message Message) {
+	log.Printf("Received %s message - %s", b.name, message)
+	for listener := range b.listeners {
 		listener <- message
 	}
 }
 
-func (t *broadcaster) Register(listener chan<- Message) {
-	t.listeners[listener] = struct{}{}
-	log.Printf("registered %s message listener (count: %d)", t.name, len(t.listeners))
+func (b *broadcaster) Register(listener chan<- Message) {
+	b.listeners[listener] = struct{}{}
 }
 
-func (t *broadcaster) Unregister(listener chan<- Message) {
+func (b *broadcaster) Unregister(listener chan<- Message) {
 	close(listener)
-	delete(t.listeners, listener)
-	log.Printf("unregistered %s message listener (count: %d)", t.name, len(t.listeners))
+	delete(b.listeners, listener)
 }
 
 func newBroadcaster(name string) broadcaster {
