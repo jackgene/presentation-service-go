@@ -1,12 +1,12 @@
 package approval
 
 import (
-	"log"
 	"presentation-service/internal/chat"
 )
 
 type approvedMessages struct {
 	chatText              []string
+	initialCapacity       int
 	messages              chan chat.Message
 	chatMessagesActor     chat.Actor
 	rejectedMessagesActor chat.Actor
@@ -17,6 +17,7 @@ func (m *approvedMessages) notifyListener(listener chan<- Messages) {
 	msgs := Messages{
 		ChatText: make([]string, 0, len(m.chatText)),
 	}
+	// Safe copy in reverse
 	for i := len(m.chatText) - 1; i >= 0; i-- {
 		msgs.ChatText = append(msgs.ChatText, m.chatText[i])
 	}
@@ -52,7 +53,6 @@ func (m *approvedMessages) Register(listener chan<- Messages) {
 		}()
 	}
 	m.listeners[listener] = struct{}{}
-	log.Printf("registered approved messages listener (count: %v)", len(m.listeners))
 }
 
 func (m *approvedMessages) Unregister(listener chan<- Messages) {
@@ -62,17 +62,17 @@ func (m *approvedMessages) Unregister(listener chan<- Messages) {
 		m.chatMessagesActor.Unregister(m.messages)
 		m.messages = nil
 	}
-	log.Printf("unregistered approved messages listener (count: %v)", len(m.listeners))
 }
 
 func (m *approvedMessages) Reset() {
-	m.chatText = nil
+	m.chatText = make([]string, 0, m.initialCapacity)
 	m.notifyAllListener()
 }
 
 func newMessageRouter(chatMessages, rejectedMessages chat.Actor, initialCapacity int) approvedMessages {
 	return approvedMessages{
 		chatText:              make([]string, 0, initialCapacity),
+		initialCapacity:       initialCapacity,
 		chatMessagesActor:     chatMessages,
 		rejectedMessagesActor: rejectedMessages,
 		listeners:             map[chan<- Messages]struct{}{},
