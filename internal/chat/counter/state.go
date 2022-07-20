@@ -6,6 +6,7 @@ import (
 )
 
 type sendersByToken struct {
+	name                  string
 	extractToken          func(string) string
 	tokensBySender        map[string]string
 	tokenFrequencies      frequencies
@@ -69,11 +70,13 @@ func (c *sendersByToken) Register(listener chan<- Counts) {
 		c.chatMessagesActor.Register(c.messages)
 		go func() {
 			for msg := range c.messages {
+				// TODO unsafe call!
 				c.NewMessage(msg)
 			}
 		}()
 	}
 	c.listeners[listener] = struct{}{}
+	log.Printf("+1 %s listener (=%d)", c.name, len(c.listeners))
 }
 
 func (c *sendersByToken) Unregister(listener chan<- Counts) {
@@ -83,6 +86,7 @@ func (c *sendersByToken) Unregister(listener chan<- Counts) {
 		c.chatMessagesActor.Unregister(c.messages)
 		c.messages = nil
 	}
+	log.Printf("-1 %s listener (=%d)", c.name, len(c.listeners))
 }
 
 func (c *sendersByToken) Reset() {
@@ -91,8 +95,11 @@ func (c *sendersByToken) Reset() {
 	c.notifyAllListener()
 }
 
-func newSendersByToken(extractToken func(string) string, chatMessages, rejectedMessages chat.Actor, initialCapacity int) sendersByToken {
+func newSendersByToken(
+	name string, extractToken func(string) string, chatMessages, rejectedMessages chat.Actor, initialCapacity int,
+) sendersByToken {
 	return sendersByToken{
+		name:                  name,
 		extractToken:          extractToken,
 		tokensBySender:        make(map[string]string, initialCapacity),
 		tokenFrequencies:      newFrequencies(initialCapacity),

@@ -59,9 +59,9 @@ func (a *approvedMessagesActor) Reset() {
 	a.mailbox <- &resetReq{}
 }
 
-func NewMessageRouter(chatMessages, rejectedMessages chat.Actor, initialCapacity int) Actor {
+func NewMessageRouter(name string, chatMessages, rejectedMessages chat.Actor, initialCapacity int) Actor {
 	actor := &approvedMessagesActor{
-		state:   newMessageRouter(chatMessages, rejectedMessages, initialCapacity),
+		state:   newMessageRouter(name, chatMessages, rejectedMessages, initialCapacity),
 		mailbox: make(chan interface{}, 16),
 	}
 	go actor.run()

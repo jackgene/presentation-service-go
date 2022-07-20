@@ -90,10 +90,13 @@ func main() {
 	chatMessageActor := chat.NewBroadcasterActor("chat")
 	rejectedMessageActor := chat.NewBroadcasterActor("rejected")
 	languagePollActor := counter.NewSendersByTokenActor(
+		"language-poll",
 		token.LanguageFromFirstWord,
 		chatMessageActor, rejectedMessageActor, 200,
 	)
-	questionActor := approval.NewMessageRouter(chatMessageActor, rejectedMessageActor, 10)
+	questionActor := approval.NewMessageRouter(
+		"question", chatMessageActor, rejectedMessageActor, 10,
+	)
 	transcriptionActor := transcription.NewBroadcasterActor()
 
 	// Deck

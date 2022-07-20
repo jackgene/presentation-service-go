@@ -1,10 +1,12 @@
 package approval
 
 import (
+	"log"
 	"presentation-service/internal/chat"
 )
 
 type approvedMessages struct {
+	name                  string
 	chatText              []string
 	initialCapacity       int
 	messages              chan chat.Message
@@ -48,11 +50,13 @@ func (m *approvedMessages) Register(listener chan<- Messages) {
 		m.chatMessagesActor.Register(m.messages)
 		go func() {
 			for msg := range m.messages {
+				// TODO unsafe call!
 				m.NewMessage(msg)
 			}
 		}()
 	}
 	m.listeners[listener] = struct{}{}
+	log.Printf("+1 %s listener (=%d)", m.name, len(m.listeners))
 }
 
 func (m *approvedMessages) Unregister(listener chan<- Messages) {
@@ -62,6 +66,7 @@ func (m *approvedMessages) Unregister(listener chan<- Messages) {
 		m.chatMessagesActor.Unregister(m.messages)
 		m.messages = nil
 	}
+	log.Printf("-1 %s listener (=%d)", m.name, len(m.listeners))
 }
 
 func (m *approvedMessages) Reset() {
@@ -69,8 +74,11 @@ func (m *approvedMessages) Reset() {
 	m.notifyAllListener()
 }
 
-func newMessageRouter(chatMessages, rejectedMessages chat.Actor, initialCapacity int) approvedMessages {
+func newMessageRouter(
+	name string, chatMessages, rejectedMessages chat.Actor, initialCapacity int,
+) approvedMessages {
 	return approvedMessages{
+		name:                  name,
 		chatText:              make([]string, 0, initialCapacity),
 		initialCapacity:       initialCapacity,
 		chatMessagesActor:     chatMessages,

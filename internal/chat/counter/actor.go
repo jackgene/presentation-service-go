@@ -61,9 +61,11 @@ func (a *sendersByTokenActor) Reset() {
 	a.mailbox <- &resetReq{}
 }
 
-func NewSendersByTokenActor(extractToken func(string) string, chatMessages, rejectedMessages chat.Actor, initialCapacity int) Actor {
+func NewSendersByTokenActor(
+	name string, extractToken func(string) string, chatMessages, rejectedMessages chat.Actor, initialCapacity int,
+) Actor {
 	actor := &sendersByTokenActor{
-		state:   newSendersByToken(extractToken, chatMessages, rejectedMessages, initialCapacity),
+		state:   newSendersByToken(name, extractToken, chatMessages, rejectedMessages, initialCapacity),
 		mailbox: make(chan interface{}, 16),
 	}
 	go actor.run()
