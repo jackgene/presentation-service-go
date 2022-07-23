@@ -56,15 +56,16 @@ func clientCloseListener(conn *websocket.Conn) <-chan struct{} {
 	closed := make(chan struct{})
 	go func() {
 		for {
-			_, _, readErr := conn.ReadMessage()
+			_, _, readErr := conn.NextReader()
 			if readErr != nil {
 				if _, ok := readErr.(*websocket.CloseError); ok {
 					log.Printf("connection closed by client: %v", readErr)
-					closed <- struct{}{}
-					close(closed)
-					break
+				} else {
+					log.Printf("unexpected websocket error: %v", readErr)
 				}
-				log.Printf("unexpected websocket error: %v", readErr)
+				closed <- struct{}{}
+				close(closed)
+				break
 			}
 		}
 	}()
@@ -113,7 +114,7 @@ func main() {
 		defer func() { _ = conn.Close() }()
 		clientClosed := clientCloseListener(conn)
 
-		counts := make(chan counter.Counts)
+		counts := make(chan counter.Counts, 1)
 		languagePollActor.Register(counts)
 		defer languagePollActor.Unregister(counts)
 	poll:
