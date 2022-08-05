@@ -10,3 +10,8 @@ Build then run:
 go build -o dist/server cmd/server/server.go
 dist/server --port=8973 --html-path=(path to deck.html)
 ```
+
+### Background
+This is built using Gin and Gorilla (for WebSockets).
+
+TODO: attempt Gorilla/Mux implementation.
