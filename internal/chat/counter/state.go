@@ -7,6 +7,7 @@ import (
 
 type sendersByToken struct {
 	name                  string
+	self                  Actor
 	extractToken          func(string) string
 	tokensBySender        map[string]string
 	tokenFrequencies      frequencies
@@ -70,8 +71,7 @@ func (c *sendersByToken) Register(listener chan<- Counts) {
 		c.chatMessagesActor.Register(c.messages)
 		go func() {
 			for msg := range c.messages {
-				// TODO unsafe call!
-				c.NewMessage(msg)
+				c.self.NewMessage(msg)
 			}
 		}()
 	}

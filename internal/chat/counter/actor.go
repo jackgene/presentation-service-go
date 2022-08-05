@@ -68,6 +68,7 @@ func NewSendersByTokenActor(
 		state:   newSendersByToken(name, extractToken, chatMessages, rejectedMessages, initialCapacity),
 		mailbox: make(chan interface{}, 16),
 	}
+	actor.state.self = actor
 	go actor.run()
 
 	return actor
