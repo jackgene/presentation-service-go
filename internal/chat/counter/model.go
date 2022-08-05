@@ -1,7 +1,15 @@
 package counter
 
+import (
+	"encoding/json"
+)
+
 type Counts struct {
-	ItemsByCount map[int][]string
+	itemsAndCounts [][]interface{}
+}
+
+func (c *Counts) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.itemsAndCounts)
 }
 
 // Non-threadsafe - only share copies!

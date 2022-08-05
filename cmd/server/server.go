@@ -121,11 +121,7 @@ func main() {
 		for {
 			select {
 			case count := <-counts:
-				flattenedCount := make([][]interface{}, 0, len(count.ItemsByCount))
-				for count, items := range count.ItemsByCount {
-					flattenedCount = append(flattenedCount, []interface{}{count, items})
-				}
-				writeErr := conn.WriteJSON(flattenedCount)
+				writeErr := conn.WriteJSON(count)
 				if writeErr != nil {
 					log.Printf("error sending poll response (%v)", writeErr)
 					break poll

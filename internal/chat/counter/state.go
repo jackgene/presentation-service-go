@@ -18,23 +18,28 @@ type sendersByToken struct {
 	listeners             map[chan<- Counts]struct{}
 }
 
-func (c *sendersByToken) notifyListener(listener chan<- Counts) {
+func (c *sendersByToken) copyCounts() Counts {
 	counts := Counts{
-		ItemsByCount: make(map[int][]string),
+		itemsAndCounts: make(
+			[][]interface{}, 0, len(c.tokenFrequencies.itemsByCount),
+		),
 	}
-	// Safe deep copy
+	// safe deep copy
 	for count, items := range c.tokenFrequencies.itemsByCount {
 		itemsCopy := make([]string, len(items))
 		copy(itemsCopy, items)
-		counts.ItemsByCount[count] = itemsCopy
+		counts.itemsAndCounts = append(
+			counts.itemsAndCounts, []interface{}{count, itemsCopy},
+		)
 	}
 
-	listener <- counts
+	return counts
 }
 
 func (c *sendersByToken) notifyAllListener() {
+	counts := c.copyCounts()
 	for listener := range c.listeners {
-		c.notifyListener(listener)
+		listener <- counts
 	}
 }
 
@@ -65,7 +70,7 @@ func (c *sendersByToken) NewMessage(message chat.Message) {
 }
 
 func (c *sendersByToken) Register(listener chan<- Counts) {
-	c.notifyListener(listener)
+	listener <- c.copyCounts()
 	if c.messages == nil {
 		c.messages = make(chan chat.Message)
 		c.chatMessagesActor.Register(c.messages)
