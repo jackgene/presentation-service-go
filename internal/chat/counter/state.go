@@ -3,7 +3,10 @@ package counter
 import (
 	"log"
 	"presentation-service/internal/chat"
+	"time"
 )
+
+const batchPeriodMillis = 100
 
 type sendersByToken struct {
 	name                  string
@@ -16,6 +19,7 @@ type sendersByToken struct {
 	chatMessagesActor     chat.Actor
 	rejectedMessagesActor chat.Actor
 	listeners             map[chan<- Counts]struct{}
+	awaitingNotify        bool
 }
 
 func (c *sendersByToken) copyCounts() Counts {
@@ -36,10 +40,20 @@ func (c *sendersByToken) copyCounts() Counts {
 	return counts
 }
 
-func (c *sendersByToken) notifyAllListener() {
+func (c *sendersByToken) notifyAllListeners() {
 	counts := c.copyCounts()
 	for listener := range c.listeners {
 		listener <- counts
+	}
+}
+
+func (c *sendersByToken) scheduleNotification() {
+	if !c.awaitingNotify {
+		time.AfterFunc(batchPeriodMillis*time.Millisecond, func() {
+			c.self.notifyAllListeners()
+			c.awaitingNotify = false
+		})
+		c.awaitingNotify = true
 	}
 }
 
@@ -62,7 +76,7 @@ func (c *sendersByToken) NewMessage(message chat.Message) {
 			c.tokenFrequencies.update(oldToken, -1)
 		}
 
-		c.notifyAllListener()
+		c.scheduleNotification()
 	} else {
 		log.Printf("No token extracted")
 		c.rejectedMessagesActor.NewMessage(message)
@@ -97,7 +111,7 @@ func (c *sendersByToken) Unregister(listener chan<- Counts) {
 func (c *sendersByToken) Reset() {
 	c.tokensBySender = make(map[string]string, c.initialCapacity)
 	c.tokenFrequencies = newFrequencies(c.initialCapacity)
-	c.notifyAllListener()
+	c.notifyAllListeners()
 }
 
 func newSendersByToken(
@@ -112,5 +126,6 @@ func newSendersByToken(
 		chatMessagesActor:     chatMessages,
 		rejectedMessagesActor: rejectedMessages,
 		listeners:             map[chan<- Counts]struct{}{},
+		awaitingNotify:        false,
 	}
 }

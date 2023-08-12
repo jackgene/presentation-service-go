@@ -5,10 +5,14 @@ import (
 )
 
 type Actor interface {
+	notifyAllListeners()
 	NewMessage(message chat.Message)
 	Register(chan<- Counts)
 	Unregister(chan<- Counts)
 	Reset()
+}
+
+type onNotifyAllListenersReq struct {
 }
 
 type onNewMessageReq struct {
@@ -33,6 +37,8 @@ type sendersByTokenActor struct {
 func (a *sendersByTokenActor) run() {
 	for reqUntyped := range a.mailbox {
 		switch req := reqUntyped.(type) {
+		case *onNotifyAllListenersReq:
+			a.state.notifyAllListeners()
 		case *onNewMessageReq:
 			a.state.NewMessage(req.message)
 		case *registerReq:
@@ -43,6 +49,10 @@ func (a *sendersByTokenActor) run() {
 			a.state.Reset()
 		}
 	}
+}
+
+func (a *sendersByTokenActor) notifyAllListeners() {
+	a.mailbox <- &onNotifyAllListenersReq{}
 }
 
 func (a *sendersByTokenActor) NewMessage(message chat.Message) {
