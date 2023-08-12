@@ -20,7 +20,7 @@ type sendersByToken struct {
 
 func (c *sendersByToken) copyCounts() Counts {
 	counts := Counts{
-		itemsAndCounts: make(
+		TokensAndCounts: make(
 			[][]interface{}, 0, len(c.tokenFrequencies.itemsByCount),
 		),
 	}
@@ -28,8 +28,8 @@ func (c *sendersByToken) copyCounts() Counts {
 	for count, items := range c.tokenFrequencies.itemsByCount {
 		itemsCopy := make([]string, len(items))
 		copy(itemsCopy, items)
-		counts.itemsAndCounts = append(
-			counts.itemsAndCounts, []interface{}{count, itemsCopy},
+		counts.TokensAndCounts = append(
+			counts.TokensAndCounts, []interface{}{count, itemsCopy},
 		)
 	}
 

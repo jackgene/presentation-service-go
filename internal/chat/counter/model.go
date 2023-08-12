@@ -5,11 +5,11 @@ import (
 )
 
 type Counts struct {
-	itemsAndCounts [][]interface{}
+	TokensAndCounts [][]interface{} `json:"tokensAndCounts"`
 }
 
 func (c *Counts) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.itemsAndCounts)
+	return json.Marshal(c)
 }
 
 // Non-threadsafe - only share copies!
