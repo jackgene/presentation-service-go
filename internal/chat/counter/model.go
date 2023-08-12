@@ -27,13 +27,17 @@ func (f *frequencies) update(item string, delta int) {
 	oldCount := f.countsByItem[item]
 	newCount := oldCount + delta
 
-	f.countsByItem[item] = newCount
+	if newCount > 0 {
+		f.countsByItem[item] = newCount
 
-	// Add to new count items
-	if delta > 0 {
-		f.itemsByCount[newCount] = append(f.itemsByCount[newCount], item)
+		// Add to new count items
+		if delta > 0 {
+			f.itemsByCount[newCount] = append(f.itemsByCount[newCount], item)
+		} else {
+			f.itemsByCount[newCount] = append([]string{item}, f.itemsByCount[newCount]...)
+		}
 	} else {
-		f.itemsByCount[newCount] = append([]string{item}, f.itemsByCount[newCount]...)
+		delete(f.countsByItem, item)
 	}
 	// Remove from old count items
 	oldCountItems := make([]string, 0, len(f.itemsByCount[oldCount]))
