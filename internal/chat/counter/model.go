@@ -5,7 +5,7 @@ import (
 )
 
 type Counts struct {
-	TokensAndCounts [][]interface{} `json:"tokensAndCounts"`
+	TokensAndCounts [][]any `json:"tokensAndCounts"` // Inner array is (string, int) pair
 }
 
 func (c *Counts) MarshalJSON() ([]byte, error) {

@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"os"
 	"presentation-service/internal/chat"
-	"presentation-service/internal/chat/approval"
 	"presentation-service/internal/chat/counter"
+	"presentation-service/internal/chat/moderation"
 	"presentation-service/internal/token"
 	"presentation-service/internal/transcription"
 	"strings"
@@ -87,18 +87,17 @@ func main() {
 	templ := template.Must(template.New("").ParseFS(fs, "public/html/*.html"))
 	r.SetHTMLTemplate(templ)
 
-	// Actors
-	chatMessageActor := chat.NewBroadcasterActor("chat")
-	rejectedMessageActor := chat.NewBroadcasterActor("rejected")
-	languagePollActor := counter.NewSendersByTokenActor(
+	chatMessageBroadcaster := chat.NewBroadcaster("chat")
+	rejectedMessageBroadcaster := chat.NewBroadcaster("rejected")
+	languagePollCounter := counter.NewSendersByTokenActor(
 		"language-poll",
 		token.LanguageFromFirstWord,
-		chatMessageActor, rejectedMessageActor, 200,
+		chatMessageBroadcaster, rejectedMessageBroadcaster, 200,
 	)
-	questionActor := approval.NewMessageRouter(
-		"question", chatMessageActor, rejectedMessageActor, 10,
+	questionBroadcaster := moderation.NewMessageRouter(
+		"question", chatMessageBroadcaster, rejectedMessageBroadcaster, 10,
 	)
-	transcriptionActor := transcription.NewBroadcasterActor()
+	transcriptionBroadcaster := transcription.NewBroadcaster()
 
 	// Deck
 	r.GET("/", func(c *gin.Context) {
@@ -114,9 +113,9 @@ func main() {
 		defer func() { _ = conn.Close() }()
 		clientClosed := clientCloseListener(conn)
 
-		counts := make(chan counter.Counts, 1)
-		languagePollActor.Register(counts)
-		defer languagePollActor.Unregister(counts)
+		counts := make(chan counter.Counts)
+		languagePollCounter.Subscribe(counts)
+		defer languagePollCounter.Unsubscribe(counts)
 	poll:
 		for {
 			select {
@@ -141,9 +140,9 @@ func main() {
 		defer func() { _ = conn.Close() }()
 		clientClosed := clientCloseListener(conn)
 
-		msgs := make(chan approval.Messages)
-		questionActor.Register(msgs)
-		defer questionActor.Unregister(msgs)
+		msgs := make(chan moderation.Messages)
+		questionBroadcaster.Subscribe(msgs)
+		defer questionBroadcaster.Unsubscribe(msgs)
 	poll:
 		for {
 			select {
@@ -169,8 +168,8 @@ func main() {
 		clientClosed := clientCloseListener(conn)
 
 		transcripts := make(chan transcription.Transcript)
-		transcriptionActor.Register(transcripts)
-		defer transcriptionActor.Unregister(transcripts)
+		transcriptionBroadcaster.Subscribe(transcripts)
+		defer transcriptionBroadcaster.Unsubscribe(transcripts)
 	poll:
 		for {
 			select {
@@ -201,8 +200,8 @@ func main() {
 		clientClosed := clientCloseListener(conn)
 
 		msgs := make(chan chat.Message)
-		rejectedMessageActor.Register(msgs)
-		defer rejectedMessageActor.Unregister(msgs)
+		rejectedMessageBroadcaster.Subscribe(msgs)
+		defer rejectedMessageBroadcaster.Unsubscribe(msgs)
 	poll:
 		for {
 			select {
@@ -236,7 +235,7 @@ func main() {
 
 		sender := route[:sepIdx]
 
-		chatMessageActor.NewMessage(chat.Message{
+		chatMessageBroadcaster.NewMessage(chat.Message{
 			Sender:    sender,
 			Recipient: recipient,
 			Text:      c.Query("text"),
@@ -245,8 +244,8 @@ func main() {
 	})
 
 	r.GET("/reset", func(c *gin.Context) {
-		languagePollActor.Reset()
-		questionActor.Reset()
+		languagePollCounter.Reset()
+		questionBroadcaster.Reset()
 		c.Status(http.StatusNoContent)
 	})
 
@@ -256,7 +255,7 @@ func main() {
 	})
 
 	r.POST("/transcription", func(c *gin.Context) {
-		transcriptionActor.NewTranscriptionText(c.Query("text"))
+		transcriptionBroadcaster.NewTranscriptionText(c.Query("text"))
 		c.Status(http.StatusNoContent)
 	})
 
