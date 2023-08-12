@@ -1,8 +1,13 @@
 package token
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
-var languagesByName map[string]string = map[string]string{
+var wordSeparatorRegex = regexp.MustCompile("[\\s!\"&,./?|]+")
+
+var languagesByName = map[string]string{
 	// GoodRx Languages
 	// Go
 	"go":     "Go",
@@ -58,13 +63,16 @@ var languagesByName map[string]string = map[string]string{
 	"scala": "Scala",
 }
 
-func LanguageFromFirstWord(text string) string {
-	words := strings.Fields(strings.TrimSpace(text))
-	var firstWord string
-	if len(words) > 0 {
-		firstWord = words[0]
-	}
-	normalizedFirstWord := strings.ToLower(firstWord)
+func ExtractLanguages(text string) []string {
+	words := wordSeparatorRegex.Split(text, -1)
+	languages := make([]string, 0, len(words))
+	for _, word := range words {
+		language := languagesByName[strings.ToLower(word)]
 
-	return languagesByName[normalizedFirstWord]
+		if language != "" {
+			languages = append(languages, language)
+		}
+	}
+
+	return languages
 }

@@ -12,7 +12,7 @@ const batchPeriodMillis = 100
 
 type SendersByTokenCounter struct {
 	name                       string
-	extractToken               func(string) string
+	extractTokens              func(string) []string
 	tokensBySender             map[string]string
 	tokenFrequencies           frequencies
 	mutex                      sync.RWMutex
@@ -71,15 +71,15 @@ func (c *SendersByTokenCounter) NewMessage(message chat.Message) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	oldToken := c.tokensBySender[sender]
-	newToken := c.extractToken(message.Text)
+	newTokens := c.extractTokens(message.Text)
 
-	if newToken != "" {
-		log.Printf(`Extracted token "%s"`, newToken)
+	if len(newTokens) > 0 {
+		log.Printf(`Extracted token "%s"`, newTokens)
 		if sender != "" {
-			c.tokensBySender[sender] = newToken
+			c.tokensBySender[sender] = newTokens[0]
 		}
 
-		c.tokenFrequencies.update(newToken, 1)
+		c.tokenFrequencies.update(newTokens[0], 1)
 		if oldToken != "" {
 			c.tokenFrequencies.update(oldToken, -1)
 		}
@@ -127,13 +127,13 @@ func (c *SendersByTokenCounter) Reset() {
 }
 
 func NewSendersByTokenActor(
-	name string, extractToken func(string) string,
+	name string, extractTokens func(string) []string,
 	chatMessageBroadcaster, rejectedMessageBroadcaster *chat.Broadcaster,
 	initialCapacity int,
 ) *SendersByTokenCounter {
 	return &SendersByTokenCounter{
 		name:                       name,
-		extractToken:               extractToken,
+		extractTokens:              extractTokens,
 		tokensBySender:             make(map[string]string, initialCapacity),
 		tokenFrequencies:           newFrequencies(initialCapacity),
 		initialCapacity:            initialCapacity,

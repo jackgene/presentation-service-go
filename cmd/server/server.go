@@ -91,7 +91,7 @@ func main() {
 	rejectedMessageBroadcaster := chat.NewBroadcaster("rejected")
 	languagePollCounter := counter.NewSendersByTokenActor(
 		"language-poll",
-		token.LanguageFromFirstWord,
+		token.ExtractLanguages,
 		chatMessageBroadcaster, rejectedMessageBroadcaster, 200,
 	)
 	questionBroadcaster := moderation.NewMessageRouter(
