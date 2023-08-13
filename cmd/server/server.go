@@ -83,9 +83,11 @@ func main() {
 		CheckOrigin:     func(r *http.Request) bool { return true },
 	}
 
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-	templ := template.Must(template.New("").ParseFS(fs, "public/html/*.html"))
-	r.SetHTMLTemplate(templ)
+	r.SetHTMLTemplate(
+		template.Must(template.New("").ParseFS(fs, "public/html/*.html")),
+	)
 
 	chatMessageBroadcaster := chat.NewBroadcaster("chat")
 	rejectedMessageBroadcaster := chat.NewBroadcaster("rejected")
