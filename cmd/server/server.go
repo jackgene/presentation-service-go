@@ -92,7 +92,7 @@ func main() {
 	chatMessageBroadcaster := chat.NewBroadcaster("chat")
 	rejectedMessageBroadcaster := chat.NewBroadcaster("rejected")
 	languagePollCounter := counter.NewSendersByTokenActor(
-		"language-poll",
+		"language-poll", 3,
 		token.ExtractLanguages,
 		chatMessageBroadcaster, rejectedMessageBroadcaster, 200,
 	)

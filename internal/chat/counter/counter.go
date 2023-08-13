@@ -1,9 +1,11 @@
 package counter
 
 import (
+	lru "github.com/hashicorp/golang-lru/v2"
 	"log"
 	"presentation-service/internal/chat"
 	"presentation-service/internal/notification"
+	"strings"
 	"sync"
 	"time"
 )
@@ -13,8 +15,9 @@ const batchPeriodMillis = 100
 type SendersByTokenCounter struct {
 	name                       string
 	extractTokens              func(string) []string
-	tokensBySender             map[string]string
-	tokenFrequencies           frequencies
+	tokensPerSender            int
+	tokensBySender             map[string]*lru.Cache[string, struct{}]
+	tokens                     multiSet[string]
 	mutex                      sync.RWMutex
 	initialCapacity            int
 	messages                   chan chat.Message
@@ -30,11 +33,11 @@ func (c *SendersByTokenCounter) copyCounts() Counts {
 	defer c.mutex.RUnlock()
 	counts := Counts{
 		TokensAndCounts: make(
-			[][]any, 0, len(c.tokenFrequencies.itemsByCount),
+			[][]any, 0, len(c.tokens.elementsByCount),
 		),
 	}
 	// safe deep copy
-	for count, items := range c.tokenFrequencies.itemsByCount {
+	for count, items := range c.tokens.elementsByCount {
 		itemsCopy := make([]string, len(items))
 		copy(itemsCopy, items)
 		counts.TokensAndCounts = append(
@@ -70,18 +73,36 @@ func (c *SendersByTokenCounter) NewMessage(message chat.Message) {
 	}
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	oldToken := c.tokensBySender[sender]
-	newTokens := c.extractTokens(message.Text)
+	extractedTokens := c.extractTokens(message.Text)
 
-	if len(newTokens) > 0 {
-		log.Printf(`Extracted token "%s"`, newTokens)
-		if sender != "" {
-			c.tokensBySender[sender] = newTokens[0]
-		}
+	if len(extractedTokens) > 0 {
+		log.Printf(`Extracted token "%s"`, strings.Join(extractedTokens, `", "`))
+		// Iterate in reverse, prioritizing first tokens
+		for i := len(extractedTokens) - 1; i >= 0; i-- {
+			extractedToken := extractedTokens[i]
+			if sender == "" {
+				c.tokens.update(extractedToken, 1)
+			} else {
+				if _, present := c.tokensBySender[sender]; !present {
+					tokens, newLRUError := lru.New[string, struct{}](c.tokensPerSender)
+					if newLRUError != nil {
+						log.Printf("Error creating LRU cache")
+						continue
+					}
+					c.tokensBySender[sender] = tokens
+				}
+				tokens := c.tokensBySender[sender]
+				oldestToken, _, gotOldest := tokens.GetOldest()
+				exists := tokens.Contains(extractedToken)
+				evicted := tokens.Add(extractedToken, struct{}{})
 
-		c.tokenFrequencies.update(newTokens[0], 1)
-		if oldToken != "" {
-			c.tokenFrequencies.update(oldToken, -1)
+				if !exists {
+					c.tokens.update(extractedToken, 1)
+					if gotOldest && evicted {
+						c.tokens.update(oldestToken, -1)
+					}
+				}
+			}
 		}
 
 		c.scheduleNotification()
@@ -120,22 +141,23 @@ func (c *SendersByTokenCounter) Unsubscribe(subscriber chan<- Counts) {
 func (c *SendersByTokenCounter) Reset() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	c.tokensBySender = make(map[string]string, c.initialCapacity)
-	c.tokenFrequencies = newFrequencies(c.initialCapacity)
+	c.tokensBySender = make(map[string]*lru.Cache[string, struct{}], c.initialCapacity)
+	c.tokens = newMultiSet[string](c.initialCapacity)
 
 	c.scheduleNotification()
 }
 
 func NewSendersByTokenActor(
-	name string, extractTokens func(string) []string,
+	name string, tokensPerSender int, extractTokens func(string) []string,
 	chatMessageBroadcaster, rejectedMessageBroadcaster *chat.Broadcaster,
 	initialCapacity int,
 ) *SendersByTokenCounter {
 	return &SendersByTokenCounter{
 		name:                       name,
 		extractTokens:              extractTokens,
-		tokensBySender:             make(map[string]string, initialCapacity),
-		tokenFrequencies:           newFrequencies(initialCapacity),
+		tokensPerSender:            tokensPerSender,
+		tokensBySender:             make(map[string]*lru.Cache[string, struct{}], initialCapacity),
+		tokens:                     newMultiSet[string](initialCapacity),
 		initialCapacity:            initialCapacity,
 		chatMessageBroadcaster:     chatMessageBroadcaster,
 		rejectedMessageBroadcaster: rejectedMessageBroadcaster,

@@ -13,45 +13,45 @@ func (c *Counts) MarshalJSON() ([]byte, error) {
 }
 
 // Non-threadsafe - only share copies!
-type frequencies struct {
-	countsByItem map[string]int
-	itemsByCount map[int][]string
+type multiSet[T comparable] struct {
+	countsByElement map[T]int
+	elementsByCount map[int][]T
 }
 
 // Mutates state
-func (f *frequencies) update(item string, delta int) {
+func (f *multiSet[T]) update(element T, delta int) {
 	if delta == 0 {
 		return
 	}
 
-	oldCount := f.countsByItem[item]
+	oldCount := f.countsByElement[element]
 	newCount := oldCount + delta
 
 	if newCount > 0 {
-		f.countsByItem[item] = newCount
+		f.countsByElement[element] = newCount
 
-		// Add to new count items
+		// Add to new count elements
 		if delta > 0 {
-			f.itemsByCount[newCount] = append(f.itemsByCount[newCount], item)
+			f.elementsByCount[newCount] = append(f.elementsByCount[newCount], element)
 		} else {
-			f.itemsByCount[newCount] = append([]string{item}, f.itemsByCount[newCount]...)
+			f.elementsByCount[newCount] = append([]T{element}, f.elementsByCount[newCount]...)
 		}
 	} else {
-		delete(f.countsByItem, item)
+		delete(f.countsByElement, element)
 	}
-	// Remove from old count items
-	oldCountItems := make([]string, 0, len(f.itemsByCount[oldCount]))
-	for _, oldCountItem := range f.itemsByCount[oldCount] {
-		if item != oldCountItem {
-			oldCountItems = append(oldCountItems, oldCountItem)
+	// Remove from old count elements
+	oldCountElems := make([]T, 0, len(f.elementsByCount[oldCount]))
+	for _, oldCountItem := range f.elementsByCount[oldCount] {
+		if element != oldCountItem {
+			oldCountElems = append(oldCountElems, oldCountItem)
 		}
 	}
-	f.itemsByCount[oldCount] = oldCountItems
+	f.elementsByCount[oldCount] = oldCountElems
 }
 
-func newFrequencies(initialCapacity int) frequencies {
-	return frequencies{
-		countsByItem: make(map[string]int, initialCapacity),
-		itemsByCount: make(map[int][]string, initialCapacity),
+func newMultiSet[T comparable](initialCapacity int) multiSet[T] {
+	return multiSet[T]{
+		countsByElement: make(map[T]int, initialCapacity),
+		elementsByCount: make(map[int][]T, initialCapacity),
 	}
 }
