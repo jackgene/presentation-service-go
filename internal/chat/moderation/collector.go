@@ -22,8 +22,7 @@ func (t *TextCollector) copyMessages() Messages {
 	messages := Messages{
 		ChatText: make([]string, 0, len(t.chatText)),
 	}
-	// Safe copy in reverse
-	for i := len(t.chatText) - 1; i >= 0; i-- {
+	for i := 0; i < len(t.chatText); i++ {
 		messages.ChatText = append(messages.ChatText, t.chatText[i])
 	}
 
