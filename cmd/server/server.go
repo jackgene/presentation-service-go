@@ -42,11 +42,12 @@ func parseFlags() cliParams {
 	return params
 }
 
-const routeSeperator = " to "
+const routeSeparator = " to "
 
-var validRecipients = map[string]struct{}{
-	"Everyone": {},
-	"Me":       {},
+var validRecipients = map[string]string{
+	"Everyone":            "Everyone",
+	"Me":                  "Me",
+	"Me (Direct Message)": "Me",
 }
 
 //go:embed public/html
@@ -221,15 +222,16 @@ func main() {
 
 	r.POST("/chat", func(c *gin.Context) {
 		route := c.Query("route")
-		sepIdx := strings.LastIndex(route, routeSeperator)
+		sepIdx := strings.LastIndex(route, routeSeparator)
 		if sepIdx == -1 {
 			log.Println("malformed chat route")
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		recipient := route[sepIdx+len(routeSeperator):]
-		if _, ok := validRecipients[recipient]; !ok {
+		rawRecipient := route[sepIdx+len(routeSeparator):]
+		recipient, ok := validRecipients[rawRecipient]
+		if !ok {
 			log.Println("invalid chat recipient")
 			c.Status(http.StatusBadRequest)
 			return
