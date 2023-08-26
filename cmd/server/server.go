@@ -264,5 +264,7 @@ func main() {
 	})
 
 	_ = r.SetTrustedProxies(nil)
-	_ = r.Run(fmt.Sprintf("0.0.0.0:%d", params.port))
+	serverAddr := fmt.Sprintf("0.0.0.0:%d", params.port)
+	log.Printf("Server starting on http://%s\n", serverAddr)
+	_ = r.Run(serverAddr)
 }
