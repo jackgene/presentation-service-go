@@ -74,14 +74,19 @@ func (c *SendersByTokenCounter) NewMessage(message chat.Message) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	extractedTokens := c.extractTokens(message.Text)
+	extractedTokensLen := len(extractedTokens)
 
-	if len(extractedTokens) > 0 {
+	if extractedTokensLen > 0 {
 		log.Printf(`Extracted token "%s"`, strings.Join(extractedTokens, `", "`))
+		newTokens := make([]string, 0, extractedTokensLen)
+		newTokenSet := map[string]struct{}{}
+		oldTokens := make([]string, 0, extractedTokensLen)
+		oldTokenSet := map[string]struct{}{}
 		// Iterate in reverse, prioritizing first tokens
-		for i := len(extractedTokens) - 1; i >= 0; i-- {
+		for i := extractedTokensLen - 1; i >= 0; i-- {
 			extractedToken := extractedTokens[i]
 			if sender == "" {
-				c.tokens.update(extractedToken, 1)
+				newTokens = append(newTokens, extractedToken)
 			} else {
 				if _, present := c.tokensBySender[sender]; !present {
 					tokens, newLRUError := lru.New[string, struct{}](c.tokensPerSender)
@@ -97,11 +102,25 @@ func (c *SendersByTokenCounter) NewMessage(message chat.Message) {
 				evicted := tokens.Add(extractedToken, struct{}{})
 
 				if !exists {
-					c.tokens.update(extractedToken, 1)
+					newTokens = append(newTokens, extractedToken)
+					newTokenSet[extractedToken] = struct{}{}
 					if gotOldest && evicted {
-						c.tokens.update(oldestToken, -1)
+						oldTokens = append(oldTokens, oldestToken)
+						oldTokenSet[oldestToken] = struct{}{}
 					}
 				}
+			}
+		}
+		for i := len(oldTokens) - 1; i >= 0; i-- {
+			oldToken := oldTokens[i]
+			if _, alsoNew := newTokenSet[oldToken]; !alsoNew {
+				c.tokens.update(oldToken, -1)
+			}
+		}
+		for i := len(newTokens) - 1; i >= 0; i-- {
+			newToken := newTokens[i]
+			if _, alsoOld := oldTokenSet[newToken]; !alsoOld {
+				c.tokens.update(newToken, 1)
 			}
 		}
 
