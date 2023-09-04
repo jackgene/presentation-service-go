@@ -67,10 +67,6 @@ func (c *SendersByTokenCounter) scheduleNotification() {
 }
 
 func (c *SendersByTokenCounter) NewMessage(message chat.Message) {
-	var sender string
-	if message.Sender != "Me" {
-		sender = message.Sender
-	}
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	extractedTokens := c.extractTokens(message.Text)
@@ -85,18 +81,18 @@ func (c *SendersByTokenCounter) NewMessage(message chat.Message) {
 		// Iterate in reverse, prioritizing first tokens
 		for i := extractedTokensLen - 1; i >= 0; i-- {
 			extractedToken := extractedTokens[i]
-			if sender == "" {
+			if message.Sender == "" {
 				newTokens = append(newTokens, extractedToken)
 			} else {
-				if _, present := c.tokensBySender[sender]; !present {
+				if _, present := c.tokensBySender[message.Sender]; !present {
 					tokens, newLRUError := lru.New[string, struct{}](c.tokensPerSender)
 					if newLRUError != nil {
 						log.Printf("Error creating LRU cache")
 						continue
 					}
-					c.tokensBySender[sender] = tokens
+					c.tokensBySender[message.Sender] = tokens
 				}
-				tokens := c.tokensBySender[sender]
+				tokens := c.tokensBySender[message.Sender]
 				oldestToken, _, gotOldest := tokens.GetOldest()
 				exists := tokens.Contains(extractedToken)
 				evicted := tokens.Add(extractedToken, struct{}{})

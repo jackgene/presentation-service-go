@@ -45,9 +45,9 @@ func parseFlags() cliParams {
 const routeSeparator = " to "
 
 var validRecipients = map[string]string{
-	"Everyone":            "Everyone",
-	"Me":                  "Me",
-	"Me (Direct Message)": "Me",
+	"Everyone":             "Everyone",
+	"You":                  "You",
+	"You (Direct Message)": "You",
 }
 
 //go:embed public/html
