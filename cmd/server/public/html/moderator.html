@@ -15547,6 +15547,7 @@ var _jackgene$live_deck$Moderator$languages = {
 		}
 	}
 };
+var _jackgene$live_deck$Moderator$moderatorName = '';
 var _jackgene$live_deck$Moderator$ChatMessage = F3(
 	function (a, b, c) {
 		return {sender: a, recipient: b, text: c};
@@ -15653,7 +15654,7 @@ var _jackgene$live_deck$Moderator$update = F2(
 					ctor: '_Tuple2',
 					_0: model,
 					_1: _jackgene$live_deck$Moderator$postChat(
-						A3(_jackgene$live_deck$Moderator$ChatMessage, 'Me', 'Everyone', model.messageText))
+						A3(_jackgene$live_deck$Moderator$ChatMessage, _jackgene$live_deck$Moderator$moderatorName, 'Everyone', model.messageText))
 				};
 			case 'RemoveMessage':
 				var _p2 = _p0._0;
@@ -16076,12 +16077,12 @@ var _jackgene$live_deck$Moderator$view = function (model) {
 																							_elm_lang$core$Maybe$Just(
 																								_elm_lang$core$Native_Utils.update(
 																									chatMsg,
-																									{sender: 'Me'})))),
+																									{sender: _jackgene$live_deck$Moderator$moderatorName})))),
 																					_1: {ctor: '[]'}
 																				},
 																				{
 																					ctor: '::',
-																					_0: _rtfeldman$elm_css$Html_Styled$text('Accept (as Me)'),
+																					_0: _rtfeldman$elm_css$Html_Styled$text('Accept (as Moderator)'),
 																					_1: {ctor: '[]'}
 																				}),
 																			_1: {
